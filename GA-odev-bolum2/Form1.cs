@@ -1,0 +1,279 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Diagnostics;
+using System.Drawing;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+
+namespace GA_odev_bolum2
+{
+    public partial class Form1 : Form
+    {
+        public Form1()
+        {
+            InitializeComponent();
+        }
+
+        List<Kromozom> ebeveynler = new List<Kromozom>();
+        List<Kromozom> cocuklar = new List<Kromozom>();
+        List<Kromozom> eslesmeHavuzu = new List<Kromozom>();
+        int populasyonSayisi = 6;
+        int bitSayisi = 8;
+        int optimumSonuc = -11;
+        double crossOverRate = 0.6;
+        double mutationRate = 0.3;
+        double iterasyonSayisi = 100;
+        double[] ruletOlasilik = new double[7];
+        int calismaSuresi = 0;
+        int[] iterasyon = new int[100];
+        long[] sure = new long[100];
+        Random rand = new Random();
+
+        void kromozonYarat()
+        {
+            for (int i = 0; i < populasyonSayisi; i++)
+            {
+                ebeveynler.Add(new Kromozom());
+                for (int j = 0; j < ebeveynler.ElementAt(i).binaryCode.Length; j++)
+                {
+                    ebeveynler.ElementAt(i).binaryCode[j] = rand.Next(0,2).ToString();
+                }
+            }
+        }
+
+        void yazdir()
+        {
+            for (int i = 0; i < populasyonSayisi; i++)
+            {
+                for (int j = 0; j < bitSayisi; j++)
+                {
+                    richTextBox1.Text += ebeveynler.ElementAt(i).binaryCode[j].ToString() + " ";
+                }
+                  richTextBox1.Text += " ; " + ebeveynler.ElementAt(i).deger + " ; " + ebeveynler.ElementAt(i).fitness + "\n";
+                richTextBox1.Text += "\n";
+            }
+
+        }
+        void degerleriHesapla(List<Kromozom> gelen)
+        {
+            for (int i = 0; i < populasyonSayisi; i++)
+            {
+                gelen.ElementAt(i).degerHesapla();
+            }
+        }
+        int fitnessMinBul(List<Kromozom> gelen)
+        {
+            Kromozom min = new Kromozom();
+            min = ebeveynler.ElementAt(0);
+            for (int i = 0; i < populasyonSayisi; i++)
+            {
+                if (ebeveynler.ElementAt(i).fitness < min.fitness)
+                    min = ebeveynler.ElementAt(i);
+            }
+            return min.fitness;
+
+        }
+        void fitnessHesapla(List<Kromozom> gelen)
+        {
+            for (int i = 0; i < populasyonSayisi; i++)
+            {
+                gelen.ElementAt(i).fitnessHesapla();
+            }
+
+            int min = fitnessMinBul(gelen);
+            if (min < 0)
+            {
+                for (int i = 0; i < populasyonSayisi; i++)
+                {
+                    gelen.ElementAt(i).fitness += Math.Abs(min)+1;
+                }
+            }
+        }
+        void ruletCarki()
+        {
+            double terslerinToplami = 0; // mininmum için 1/f(x) toplamı
+            ruletOlasilik[0] = 0;
+            for (int i = 0; i < populasyonSayisi; i++)
+            {
+                terslerinToplami += (1.0 / ebeveynler.ElementAt(i).fitness);
+                ebeveynler.ElementAt(i).olasilik = 1.0 / ebeveynler.ElementAt(i).fitness;
+            }
+            for (int i = 0; i < populasyonSayisi; i++)
+            {
+                ebeveynler.ElementAt(i).olasilik /= terslerinToplami;
+                ruletOlasilik[i + 1] = ruletOlasilik[i] + ebeveynler.ElementAt(i).olasilik;
+            }
+        }
+        int indisAl(double gelen)
+        {
+            for (int i = 0; i < populasyonSayisi; i++)
+            {
+                if (ruletOlasilik[i] <= gelen && gelen < ruletOlasilik[i + 1])
+                    return i;
+            }
+            return 3;
+        }
+        void eslesmeHavuzuBelirle()
+        {
+            double random;
+          //  Console.WriteLine(calismaSuresi + "\n");
+            for (int i = 0; i < populasyonSayisi; i++)
+            {
+                random = rand.NextDouble();
+                eslesmeHavuzu.Add(ebeveynler.ElementAt(indisAl(random))); //random üretilen sayı hangi indis aralığındaysa onu eşleşme havuzuna ekle
+                //eslesmeHavuzu.Add(ebeveynler.ElementAt(i));
+            }
+
+        }
+        int rastgeleIndisSec(int baslangic)
+        {
+            double rastgele;
+            for (int i = baslangic; i < bitSayisi; i++)
+            {
+                rastgele = rand.NextDouble();
+                if (crossOverRate >= rastgele)
+                    return i;
+            }
+            return baslangic;
+        }
+        void crossOver()
+        {
+            int r1, r2, breakPoint;
+            while (eslesmeHavuzu.Count != 0)
+            {
+                do
+                {
+                    r1 = rand.Next(0, eslesmeHavuzu.Count); //rastgele ebeyn 1
+                    r2 = rand.Next(0, eslesmeHavuzu.Count); //rastgele ebeyn 2
+                } while (r1 == r2 && eslesmeHavuzu.ElementAt(r1).Equals(eslesmeHavuzu.ElementAt(r2)));
+                breakPoint = rastgeleIndisSec(0);
+                //richTextBox1.Text += "\n" + bas + " : " + son + "\n";
+                cocuklar.Add(eslesmeHavuzu.ElementAt(r1).onePointCrossover(eslesmeHavuzu.ElementAt(r2), breakPoint));
+                cocuklar.Add(eslesmeHavuzu.ElementAt(r2).onePointCrossover(eslesmeHavuzu.ElementAt(r1), breakPoint));
+                if (r1 > r2)
+                {
+                    eslesmeHavuzu.RemoveAt(r1);
+                    eslesmeHavuzu.RemoveAt(r2);
+                }
+                else
+                {
+                    eslesmeHavuzu.RemoveAt(r2);
+                    eslesmeHavuzu.RemoveAt(r1);
+                }
+
+            }
+        }
+        //swap mutation
+        void mutasyonIslemi()
+        {
+            double rastgele;
+            for (int i = 0; i < populasyonSayisi; i++)
+            {
+                for (int j = 0; j < bitSayisi; j++)
+                {
+                    rastgele = rand.NextDouble();
+                    if (rastgele <= mutationRate)
+                    {
+                        if (cocuklar.ElementAt(i).binaryCode[j].Equals("1"))
+                            cocuklar.ElementAt(i).binaryCode[j] = "0";
+                        else
+                            cocuklar.ElementAt(i).binaryCode[j] = "1";
+                    }
+                }
+            }
+        }
+        int minimumBul(List<Kromozom> gelen)
+        {
+            Kromozom min = new Kromozom();
+            min.deger = int.MaxValue;
+            for (int i = 0; i < populasyonSayisi; i++)
+            {
+                if (gelen.ElementAt(i).deger == optimumSonuc)
+                    return gelen.ElementAt(i).deger;
+            }
+            return int.MaxValue;
+        }
+        void hesapla()
+        {
+            calismaSuresi++;
+            degerleriHesapla(ebeveynler);
+            fitnessHesapla(ebeveynler);
+            ruletCarki();
+            eslesmeHavuzuBelirle();
+            crossOver();
+            mutasyonIslemi();
+            //yazdir();
+            ebeveynler = cocuklar;
+        }
+
+        void sifirla()
+        {
+            ebeveynler.Clear();
+            cocuklar.Clear();
+            richTextBox1.Clear();
+            eslesmeHavuzu.Clear();
+            for (int i = 0; i < ruletOlasilik.Length; i++) ruletOlasilik[i] = 0;
+
+        }
+        void ortalamaHesapla()
+        {
+            long toplamSure=0;
+            int toplamIterasyon=0; 
+            for(int i=0;i<iterasyonSayisi;i++)
+            {
+                toplamSure += sure[i];
+                toplamIterasyon += iterasyon[i];
+            }
+            toplamSure /= sure.Length;
+            toplamIterasyon /= iterasyon.Length;
+            richTextBox1.Text += toplamSure + "\n";
+            richTextBox1.Text += toplamIterasyon + "\n";
+
+        }
+
+        private void button1_Click_1(object sender, EventArgs e)
+        {
+          //  try
+            {
+                
+                  Stopwatch stopWatch = new Stopwatch();
+                int k = 0;
+                int it;
+                for (int i = 0; i < iterasyonSayisi; i++)
+                {
+
+                    
+                    sifirla();
+                    kromozonYarat();
+                    stopWatch.Start();
+                    it = 0;
+                    do
+                    {
+                        hesapla();
+                        it++;
+                        //Console.WriteLine(minimumBul(ebeveynler).ToString());
+                    } while (minimumBul(ebeveynler) != optimumSonuc);
+                    stopWatch.Stop();
+                    sure[k] = stopWatch.ElapsedMilliseconds;
+                    stopWatch.Reset();
+                    iterasyon[k] = it;
+                    k++;
+
+                }
+                ortalamaHesapla();
+            }
+            
+          
+        
+         /*   catch (Exception ex)
+            {
+                MessageBox.Show(ex.ToString());
+            }*/
+        }
+    }
+}
