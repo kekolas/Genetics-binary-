@@ -42,6 +42,10 @@ namespace GA_odev_bolum2
                 for (int j = 0; j < ebeveynler.ElementAt(i).binaryCode.Length; j++)
                 {
                     ebeveynler.ElementAt(i).binaryCode[j] = rand.Next(0,2).ToString();
+                    ebeveynler.ElementAt(i).t1[j] = rand.Next(0, 2).ToString();
+                    ebeveynler.ElementAt(i).t2[j] = rand.Next(0, 2).ToString();
+                    ebeveynler.ElementAt(i).co1[j] = rand.Next(0, 2).ToString();
+                    ebeveynler.ElementAt(i).co2[j] = rand.Next(0, 2).ToString();
                 }
             }
         }
@@ -50,14 +54,27 @@ namespace GA_odev_bolum2
         {
             for (int i = 0; i < populasyonSayisi; i++)
             {
-                for (int j = 0; j < bitSayisi; j++)
-                {
-                    richTextBox1.Text += ebeveynler.ElementAt(i).binaryCode[j].ToString() + " ";
-                }
-                  richTextBox1.Text += " ; " + ebeveynler.ElementAt(i).deger + " ; " + ebeveynler.ElementAt(i).fitness + "\n";
+                richTextBox1.Text += "////";
+                inputYazdir(i,ebeveynler.ElementAt(i).co1);
+                richTextBox1.Text += "////";
+                inputYazdir(i, ebeveynler.ElementAt(i).t1);
+                richTextBox1.Text += "////";
+                inputYazdir(i, ebeveynler.ElementAt(i).co2);
+                richTextBox1.Text += "////";
+                inputYazdir(i, ebeveynler.ElementAt(i).t2);
+
                 richTextBox1.Text += "\n";
             }
 
+        }
+
+        void inputYazdir(int i,string[] gelen)
+        {
+            for (int j = 0; j < gelen.Count(); j++)
+            {
+                richTextBox1.Text += gelen[j] + " ";
+            }
+            richTextBox1.Text += " ; " + ebeveynler.ElementAt(i).degerHesapla2(gelen) + " ; " + ebeveynler.ElementAt(i).fitness + "\n";
         }
         void degerleriHesapla(List<Kromozom> gelen)
         {
@@ -152,9 +169,9 @@ namespace GA_odev_bolum2
                     r2 = rand.Next(0, eslesmeHavuzu.Count); //rastgele ebeyn 2
                 } while (r1 == r2 && eslesmeHavuzu.ElementAt(r1).Equals(eslesmeHavuzu.ElementAt(r2)));
                 breakPoint = rastgeleIndisSec(0);
-                //richTextBox1.Text += "\n" + bas + " : " + son + "\n";
-                cocuklar.Add(eslesmeHavuzu.ElementAt(r1).onePointCrossover(eslesmeHavuzu.ElementAt(r2), breakPoint));
-                cocuklar.Add(eslesmeHavuzu.ElementAt(r2).onePointCrossover(eslesmeHavuzu.ElementAt(r1), breakPoint));
+                
+                cocuklar.Add(Kromozom.onePointCrossover(eslesmeHavuzu.ElementAt(r1),eslesmeHavuzu.ElementAt(r2),breakPoint));
+                cocuklar.Add(Kromozom.onePointCrossover(eslesmeHavuzu.ElementAt(r2),eslesmeHavuzu.ElementAt(r1),breakPoint));
                 if (r1 > r2)
                 {
                     eslesmeHavuzu.RemoveAt(r1);
@@ -165,26 +182,19 @@ namespace GA_odev_bolum2
                     eslesmeHavuzu.RemoveAt(r2);
                     eslesmeHavuzu.RemoveAt(r1);
                 }
-
             }
         }
         //swap mutation
         void mutasyonIslemi()
         {
-            double rastgele;
+          
             for (int i = 0; i < populasyonSayisi; i++)
             {
-                for (int j = 0; j < bitSayisi; j++)
-                {
-                    rastgele = rand.NextDouble();
-                    if (rastgele <= mutationRate)
-                    {
-                        if (cocuklar.ElementAt(i).binaryCode[j].Equals("1"))
-                            cocuklar.ElementAt(i).binaryCode[j] = "0";
-                        else
-                            cocuklar.ElementAt(i).binaryCode[j] = "1";
-                    }
-                }
+                // cocuklar.ElementAt(i)=Kromozom.mutasyonIslemi(cocuklar.ElementAt(i));
+                Kromozom kromozom = cocuklar.ElementAt(i);
+                kromozom = Kromozom.mutasyonIslemi(kromozom);
+                cocuklar.RemoveAt(i);
+                cocuklar.Insert(i,kromozom);
             }
         }
         int minimumBul(List<Kromozom> gelen)
@@ -207,7 +217,7 @@ namespace GA_odev_bolum2
             eslesmeHavuzuBelirle();
             crossOver();
             mutasyonIslemi();
-            //yazdir();
+            yazdir();
             ebeveynler = cocuklar;
         }
 
@@ -247,7 +257,6 @@ namespace GA_odev_bolum2
                 for (int i = 0; i < iterasyonSayisi; i++)
                 {
 
-                    
                     sifirla();
                     kromozonYarat();
                     stopWatch.Start();
@@ -257,7 +266,7 @@ namespace GA_odev_bolum2
                         hesapla();
                         it++;
                         //Console.WriteLine(minimumBul(ebeveynler).ToString());
-                    } while (minimumBul(ebeveynler) != optimumSonuc);
+                    } while (minimumBul(ebeveynler) != optimumSonuc && it < 10) ;
                     stopWatch.Stop();
                     sure[k] = stopWatch.ElapsedMilliseconds;
                     stopWatch.Reset();
@@ -268,12 +277,6 @@ namespace GA_odev_bolum2
                 ortalamaHesapla();
             }
             
-          
-        
-         /*   catch (Exception ex)
-            {
-                MessageBox.Show(ex.ToString());
-            }*/
         }
     }
 }
